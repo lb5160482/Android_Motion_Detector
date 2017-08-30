@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+android:layout_width="fill_parent"
+android:layout_height="fill_parent"
+    >
+    <SurfaceView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/preview"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">
+    </SurfaceView>
+    <TextView
+        android:id="@+id/thief_text"
+        android:layout_width="wrap_content"
+        android:layout_height="30dp"
+        android:textSize="40px"
+        android:layout_gravity="center_horizontal|center_vertical"
+        android:textColor="#FF0000"/>
+    <TextView
+        android:id="@+id/count_text"
+        android:layout_width="wrap_content"
+        android:layout_height="30dp"
+        android:textSize="40px"
+        android:layout_gravity="center_horizontal|center_vertical"
+        android:textColor="#FFFFFF"/>
+    <Button
+        android:id="@+id/toggle_detection"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal|bottom"
+        android:text="Start Detecting" />
+</FrameLayout>
