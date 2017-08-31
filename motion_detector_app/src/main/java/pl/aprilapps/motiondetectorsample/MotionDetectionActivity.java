@@ -18,6 +18,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TableRow;
 import android.widget.TextView;
 
 import com.jwetherell.motiondetection.data.GlobalData;
@@ -49,6 +50,7 @@ public class MotionDetectionActivity extends SensorsActivity {
     private static TextView countText;
     private static CountDownTimer countDownTimer;
     private static EditText startTimeText;
+    private static TableRow tableRow;
 
     private static volatile AtomicBoolean processing = new AtomicBoolean(false);
 
@@ -74,6 +76,7 @@ public class MotionDetectionActivity extends SensorsActivity {
         textView = (TextView)findViewById(R.id.thief_text);
         countText = (TextView)findViewById(R.id.count_text);
         startTimeText = (EditText) findViewById(R.id.start_time);
+        tableRow = (TableRow)findViewById(R.id.tableRow1);
 
         if (Preferences.USE_RGB) {
             detector = new RgbMotionDetection();
@@ -374,13 +377,14 @@ public class MotionDetectionActivity extends SensorsActivity {
                             }
                         };
                         countDownTimer.start();
-
+                        tableRow.setVisibility(View.INVISIBLE);
                         isDetecting = true;
                         TextView tv = (TextView)findViewById(R.id.toggle_detection);
                         tv.setText("Stop Detecting");
                     }
                     else {
                         countDownTimer.cancel();
+                        tableRow.setVisibility(View.VISIBLE);
                         countText.setText("");
                         isDetecting = false;
                         doDetect = false;
