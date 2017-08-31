@@ -17,6 +17,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import com.jwetherell.motiondetection.data.GlobalData;
@@ -46,8 +47,8 @@ public class MotionDetectionActivity extends SensorsActivity {
     private Boolean isDetecting = false;
     private static Boolean doDetect = false;
     private static TextView countText;
-    private static Object syncText;
     private static CountDownTimer countDownTimer;
+    private static EditText startTimeText;
 
     private static volatile AtomicBoolean processing = new AtomicBoolean(false);
 
@@ -72,8 +73,7 @@ public class MotionDetectionActivity extends SensorsActivity {
 
         textView = (TextView)findViewById(R.id.thief_text);
         countText = (TextView)findViewById(R.id.count_text);
-
-        syncText = new Object();
+        startTimeText = (EditText) findViewById(R.id.start_time);
 
         if (Preferences.USE_RGB) {
             detector = new RgbMotionDetection();
@@ -350,8 +350,9 @@ public class MotionDetectionActivity extends SensorsActivity {
             switch (v.getId()) {
                 case R.id.toggle_detection:
                     if (!isDetecting) {
+                        int startTime = Integer.parseInt(startTimeText.getText().toString());
 
-                        countDownTimer = new CountDownTimer(10000, 10) {
+                        countDownTimer = new CountDownTimer(startTime * 1000, 10) {
                             public void onTick(final long millisUntilFinished) {
                                 MotionDetectionActivity.this.runOnUiThread(new Runnable() {
                                     @Override
