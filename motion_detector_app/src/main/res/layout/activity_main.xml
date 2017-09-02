@@ -23,12 +23,14 @@ android:layout_height="fill_parent"
         android:textSize="40px"
         android:layout_gravity="center_horizontal|center_vertical"
         android:textColor="#FFFFFF"/>
+
     <Button
         android:id="@+id/toggle_detection"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal|bottom"
         android:text="Start Detecting" />
+
     <TableRow
         android:id="@+id/tableRow1"
         android:layout_gravity="center_horizontal|top"
@@ -45,4 +47,44 @@ android:layout_height="fill_parent"
             android:layout_height="wrap_content"
             android:text="10"/>
     </TableRow>
+
+    <TableLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal|center_vertical">
+
+        <TableRow
+            android:id="@+id/tableRow_user"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GMail:" />
+
+            <EditText
+                android:id="@+id/username"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="GMail Address" />
+        </TableRow>
+
+        <TableRow
+            android:id="@+id/tableRow_password"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Password:" />
+
+            <EditText
+                android:id="@+id/password"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword" />
+        </TableRow>
+    </TableLayout>
 </FrameLayout>

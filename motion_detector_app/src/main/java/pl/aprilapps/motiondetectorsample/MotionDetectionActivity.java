@@ -11,6 +11,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.support.design.widget.Snackbar;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -33,6 +34,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.mail.AuthenticationFailedException;
+import javax.mail.MessagingException;
+
 public class MotionDetectionActivity extends SensorsActivity {
 
     private static final String TAG = "MotionDetectionActivity";
@@ -47,10 +51,15 @@ public class MotionDetectionActivity extends SensorsActivity {
     private Button toggleButton;
     private Boolean isDetecting = false;
     private static Boolean doDetect = false;
+
     private static TextView countText;
     private static CountDownTimer countDownTimer;
-    private static EditText startTimeText;
-    private static TableRow tableRow;
+    private static EditText startTimeEditText;
+    private static TableRow startTimeTableRow;
+    private static TableRow userNameTableRow;
+    private static TableRow passWordTableRow;
+    private EditText userEditText;
+    private EditText passEditText;
 
     private static volatile AtomicBoolean processing = new AtomicBoolean(false);
 
@@ -75,8 +84,12 @@ public class MotionDetectionActivity extends SensorsActivity {
 
         textView = (TextView)findViewById(R.id.thief_text);
         countText = (TextView)findViewById(R.id.count_text);
-        startTimeText = (EditText) findViewById(R.id.start_time);
-        tableRow = (TableRow)findViewById(R.id.tableRow1);
+        startTimeEditText = (EditText) findViewById(R.id.start_time);
+        userEditText = (EditText)findViewById(R.id.username);
+        passEditText = (EditText)findViewById(R.id.password);
+        startTimeTableRow = (TableRow)findViewById(R.id.tableRow1);
+        userNameTableRow = (TableRow)findViewById(R.id.tableRow_user);
+        passWordTableRow = (TableRow)findViewById(R.id.tableRow_password);
 
         if (Preferences.USE_RGB) {
             detector = new RgbMotionDetection();
@@ -288,6 +301,7 @@ public class MotionDetectionActivity extends SensorsActivity {
                         Log.i(TAG, "Saving.. previous=" + previous + " original=" + original + " bitmap=" + bitmap);
                         Looper.prepare();
                         new SavePhotoTask().execute(previous, original, bitmap);
+                        sendMessage();
                     } else {
                         Log.i(TAG, "Not taking picture because not enough time has passed since the creation of the Surface");
                     }
@@ -335,6 +349,7 @@ public class MotionDetectionActivity extends SensorsActivity {
         }
 
         private void save(String name, Bitmap bitmap) {
+            // System.out.println(name + "|!!!!!!!!!!!!!!!!!!!!!!!"); Environment.getExternalStorageDirectory() + "/1504311334645.jpg"
             File photo = new File(path, name + ".jpg");
             if (photo.exists()) photo.delete();
 
@@ -353,7 +368,7 @@ public class MotionDetectionActivity extends SensorsActivity {
             switch (v.getId()) {
                 case R.id.toggle_detection:
                     if (!isDetecting) {
-                        int startTime = Integer.parseInt(startTimeText.getText().toString());
+                        int startTime = Integer.parseInt(startTimeEditText.getText().toString());
 
                         countDownTimer = new CountDownTimer(startTime * 1000, 10) {
                             public void onTick(final long millisUntilFinished) {
@@ -377,14 +392,18 @@ public class MotionDetectionActivity extends SensorsActivity {
                             }
                         };
                         countDownTimer.start();
-                        tableRow.setVisibility(View.INVISIBLE);
+                        startTimeTableRow.setVisibility(View.INVISIBLE);
+                        userNameTableRow.setVisibility(View.INVISIBLE);
+                        passWordTableRow.setVisibility(View.INVISIBLE);
                         isDetecting = true;
                         TextView tv = (TextView)findViewById(R.id.toggle_detection);
                         tv.setText("Stop Detecting");
                     }
                     else {
                         countDownTimer.cancel();
-                        tableRow.setVisibility(View.VISIBLE);
+                        startTimeTableRow.setVisibility(View.VISIBLE);
+                        userNameTableRow.setVisibility(View.VISIBLE);
+                        passWordTableRow.setVisibility(View.VISIBLE);
                         countText.setText("");
                         isDetecting = false;
                         doDetect = false;
@@ -395,4 +414,62 @@ public class MotionDetectionActivity extends SensorsActivity {
             }
         }
     };
+
+    private void sendMessage() {
+        String[] recipients = {userEditText.getText().toString() };
+        SendEmailAsyncTask email = new SendEmailAsyncTask();
+        email.activity = this;
+        email.m = new Mail(userEditText.getText().toString(), passEditText.getText()
+                .toString());
+        email.m.set_from(userEditText.getText().toString());
+        email.m.setBody("Image captured:\n");
+        email.m.set_to(recipients);
+        email.m.set_subject("Image captured from LB Motion Detector");
+//        try {
+//            email.m.addAttachment(Environment.getExternalStorageDirectory() + "/capturedImages/" + fileName);
+//        }
+//        catch (Exception e) {
+//            Log.e("addAttachment", e.toString());
+//        }
+        email.execute();
+    }
+
+    public void displayMessage(String message) {
+        Snackbar.make(findViewById(R.id.password), message, Snackbar.LENGTH_LONG)
+                .setAction("Action", null).show();
+    }
+}
+
+class SendEmailAsyncTask extends AsyncTask<Void, Void, Boolean> {
+    Mail m;
+    MotionDetectionActivity activity;
+
+    public SendEmailAsyncTask() {}
+
+    @Override
+    protected Boolean doInBackground(Void... params) {
+        try {
+            if (m.send()) {
+                activity.displayMessage("Email sent.");
+            } else {
+                activity.displayMessage("Email failed to send.");
+            }
+            System.out.println("email sent!");
+            return true;
+        } catch (AuthenticationFailedException e) {
+            Log.e(SendEmailAsyncTask.class.getName(), "Bad account details");
+            e.printStackTrace();
+            activity.displayMessage("Authentication failed.");
+            return false;
+        } catch (MessagingException e) {
+            Log.e(SendEmailAsyncTask.class.getName(), "Email failed");
+            e.printStackTrace();
+            activity.displayMessage("Email failed to send.");
+            return false;
+        } catch (Exception e) {
+            e.printStackTrace();
+            activity.displayMessage("Unexpected error occured.");
+            return false;
+        }
+    }
 }
