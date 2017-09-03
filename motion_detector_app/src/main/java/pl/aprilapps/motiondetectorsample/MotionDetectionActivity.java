@@ -60,6 +60,10 @@ public class MotionDetectionActivity extends SensorsActivity {
     private static TableRow passWordTableRow;
     private EditText userEditText;
     private EditText passEditText;
+    private String fileName;
+    private  Boolean isSendingMsg = false;
+    private Object syncSendMsg;
+    private int numImageTaken = 0;
 
     private static volatile AtomicBoolean processing = new AtomicBoolean(false);
 
@@ -72,6 +76,8 @@ public class MotionDetectionActivity extends SensorsActivity {
         setContentView(R.layout.activity_main);
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        syncSendMsg = new Object();
 
         preview = (SurfaceView) findViewById(R.id.preview);
         previewHolder = preview.getHolder();
@@ -238,10 +244,10 @@ public class MotionDetectionActivity extends SensorsActivity {
                 });
                 return;
             }
-//            System.out.println("thread running...");
-            if (!processing.compareAndSet(false, true)) return;
+//            System.out.println("dbggggggggg:thread running...");
+            if (!processing.compareAndSet( false, true)) return;
 
-            // Log.d(TAG, "BEGIN PROCESSING...");
+             Log.d(TAG, "BEGIN PROCESSING...");
             try {
                 // Previous frame
                 int[] pre = null;
@@ -301,7 +307,17 @@ public class MotionDetectionActivity extends SensorsActivity {
                         Log.i(TAG, "Saving.. previous=" + previous + " original=" + original + " bitmap=" + bitmap);
                         Looper.prepare();
                         new SavePhotoTask().execute(previous, original, bitmap);
-                        sendMessage();
+                        numImageTaken++;
+                        if (numImageTaken == 2) {
+                            System.out.println("numImageTaken: " + numImageTaken);
+                            numImageTaken = 0;
+                            if (!isSendingMsg) {
+                                synchronized (syncSendMsg) {
+                                    System.out.println("numImageTaken: sending!!!!!");
+                                    sendMessage(fileName);
+                                }
+                            }
+                        }
                     } else {
                         Log.i(TAG, "Not taking picture because not enough time has passed since the creation of the Surface");
                     }
@@ -325,7 +341,7 @@ public class MotionDetectionActivity extends SensorsActivity {
         }
     };
 
-    private static final class SavePhotoTask extends AsyncTask<Bitmap, Integer, Integer> {
+    private final class SavePhotoTask extends AsyncTask<Bitmap, Integer, Integer> {
         private String path = Environment.getExternalStorageDirectory() + "/capturedImages";
 
         public SavePhotoTask() {
@@ -349,8 +365,10 @@ public class MotionDetectionActivity extends SensorsActivity {
         }
 
         private void save(String name, Bitmap bitmap) {
-            // System.out.println(name + "|!!!!!!!!!!!!!!!!!!!!!!!"); Environment.getExternalStorageDirectory() + "/1504311334645.jpg"
             File photo = new File(path, name + ".jpg");
+            synchronized (syncSendMsg) {
+                fileName = path + "/" + name + ".jpg";
+            }
             if (photo.exists()) photo.delete();
 
             try {
@@ -415,7 +433,7 @@ public class MotionDetectionActivity extends SensorsActivity {
         }
     };
 
-    private void sendMessage() {
+    private void sendMessage(String fileName) {
         String[] recipients = {userEditText.getText().toString() };
         SendEmailAsyncTask email = new SendEmailAsyncTask();
         email.activity = this;
@@ -425,12 +443,14 @@ public class MotionDetectionActivity extends SensorsActivity {
         email.m.setBody("Image captured:\n");
         email.m.set_to(recipients);
         email.m.set_subject("Image captured from LB Motion Detector");
-//        try {
-//            email.m.addAttachment(Environment.getExternalStorageDirectory() + "/capturedImages/" + fileName);
-//        }
-//        catch (Exception e) {
-//            Log.e("addAttachment", e.toString());
-//        }
+        try {
+            email.m.addAttachment(fileName);
+        }
+        catch (Exception e) {
+            displayMessage("Image attached failed!");
+            System.out.println("debug: Image attached failed!");
+            return;
+        }
         email.execute();
     }
 
@@ -438,38 +458,48 @@ public class MotionDetectionActivity extends SensorsActivity {
         Snackbar.make(findViewById(R.id.password), message, Snackbar.LENGTH_LONG)
                 .setAction("Action", null).show();
     }
-}
 
-class SendEmailAsyncTask extends AsyncTask<Void, Void, Boolean> {
-    Mail m;
-    MotionDetectionActivity activity;
+    class SendEmailAsyncTask extends AsyncTask<Void, Void, Boolean> {
+        Mail m;
+        MotionDetectionActivity activity;
 
-    public SendEmailAsyncTask() {}
+        public SendEmailAsyncTask() {}
 
-    @Override
-    protected Boolean doInBackground(Void... params) {
-        try {
-            if (m.send()) {
-                activity.displayMessage("Email sent.");
-            } else {
+        @Override
+        protected Boolean doInBackground(Void... params) {
+            isSendingMsg = true;
+            try {
+                activity.displayMessage("start sending message!");
+                System.out.println("dbggggggggg:start sending message!");
+                if (m.send()) {
+                    activity.displayMessage("Email sent.");
+                } else {
+                    activity.displayMessage("Email failed to send.");
+                }
+                System.out.println("dbggggggggg:messages sent!");
+                isSendingMsg = false;
+                return true;
+            } catch (AuthenticationFailedException e) {
+                Log.e(SendEmailAsyncTask.class.getName(), "Bad account details");
+                e.printStackTrace();
+                activity.displayMessage("Authentication failed.");
+                System.out.println("dbggggggggg:Authentication failed.");
+                isSendingMsg = false;
+                return false;
+            } catch (MessagingException e) {
+                Log.e(SendEmailAsyncTask.class.getName(), "Email failed");
+                e.printStackTrace();
                 activity.displayMessage("Email failed to send.");
+                System.out.println("dbggggggggg:Email failed to send.");
+                isSendingMsg = false;
+                return false;
+            } catch (Exception e) {
+                e.printStackTrace();
+                activity.displayMessage("Unexpected error occured.");
+                System.out.println("dbggggggggg:Unexpected error occured");
+                isSendingMsg = false;
+                return false;
             }
-            System.out.println("email sent!");
-            return true;
-        } catch (AuthenticationFailedException e) {
-            Log.e(SendEmailAsyncTask.class.getName(), "Bad account details");
-            e.printStackTrace();
-            activity.displayMessage("Authentication failed.");
-            return false;
-        } catch (MessagingException e) {
-            Log.e(SendEmailAsyncTask.class.getName(), "Email failed");
-            e.printStackTrace();
-            activity.displayMessage("Email failed to send.");
-            return false;
-        } catch (Exception e) {
-            e.printStackTrace();
-            activity.displayMessage("Unexpected error occured.");
-            return false;
         }
     }
 }
