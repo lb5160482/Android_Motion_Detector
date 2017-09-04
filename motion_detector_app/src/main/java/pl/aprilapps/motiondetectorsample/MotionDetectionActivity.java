@@ -66,6 +66,8 @@ public class MotionDetectionActivity extends SensorsActivity {
     private  Boolean isSendingMsg = false;
     private Object syncSendMsg;
     private int numImageTaken = 0;
+    private int screenWidth = -1;
+    private int screenHeight = -1;
 
     private static volatile AtomicBoolean processing = new AtomicBoolean(false);
 
@@ -152,7 +154,14 @@ public class MotionDetectionActivity extends SensorsActivity {
             Camera.Size size = cam.getParameters().getPreviewSize();
             if (size == null) return;
 
+            if (screenWidth < 0 || screenHeight < 0) {
+                screenWidth = size.width;
+                screenHeight = size.height;
+            }
             if (!GlobalData.isPhoneInMotion()) {
+                if (size.width != screenWidth || size.height != screenHeight) {
+                    displayMessage("Error! Please restart app!");
+                }
                 DetectionThread thread = new DetectionThread(data, size.width, size.height);
                 thread.start();
             }
@@ -310,7 +319,7 @@ public class MotionDetectionActivity extends SensorsActivity {
                         Looper.prepare();
                         new SavePhotoTask().execute(previous, original, bitmap);
                         numImageTaken++;
-                        if (numImageTaken == 2) {
+                        if (numImageTaken == 3) {
                             numImageTaken = 0;
                             if (!isSendingMsg) {
                                 synchronized (syncSendMsg) {
@@ -361,12 +370,13 @@ public class MotionDetectionActivity extends SensorsActivity {
             for (int i = 0; i < data.length; i++) {
                 Bitmap bitmap = data[i];
                 String name = String.valueOf(System.currentTimeMillis());
-                if (i == 1) {
+                if (i == 1 && bitmap != null) {
+                    save(name, bitmap);
                     synchronized (syncSendMsg) {
                         fileName = path + "/" + name + ".jpg";
                     }
                 }
-                if (bitmap != null) save(name, bitmap);
+//                if (bitmap != null) save(name, bitmap);
             }
             return 1;
         }
@@ -429,6 +439,7 @@ public class MotionDetectionActivity extends SensorsActivity {
                         countText.setText("");
                         isDetecting = false;
                         doDetect = false;
+                        numImageTaken = 0;
                         TextView tv = (TextView)findViewById(R.id.toggle_detection);
                         tv.setText("Start Detecting");
                     }
