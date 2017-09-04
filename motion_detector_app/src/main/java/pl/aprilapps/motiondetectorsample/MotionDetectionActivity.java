@@ -40,6 +40,7 @@ import javax.mail.MessagingException;
 public class MotionDetectionActivity extends SensorsActivity {
 
     private static final String TAG = "MotionDetectionActivity";
+    private boolean debug = false;
 
     private static SurfaceView preview = null;
     private static SurfaceHolder previewHolder = null;
@@ -61,6 +62,7 @@ public class MotionDetectionActivity extends SensorsActivity {
     private EditText userEditText;
     private EditText passEditText;
     private String fileName;
+    private String sendFileName;
     private  Boolean isSendingMsg = false;
     private Object syncSendMsg;
     private int numImageTaken = 0;
@@ -181,7 +183,7 @@ public class MotionDetectionActivity extends SensorsActivity {
             Camera.Size size = getBestPreviewSize(width, height, parameters);
             if (size != null) {
                 parameters.setPreviewSize(size.width, size.height);
-                Log.d(TAG, "Using width=" + size.width + " height=" + size.height);
+                if (debug) Log.d(TAG, "Using width=" + size.width + " height=" + size.height);
             }
             camera.setParameters(parameters);
             camera.startPreview();
@@ -244,10 +246,10 @@ public class MotionDetectionActivity extends SensorsActivity {
                 });
                 return;
             }
-//            System.out.println("dbggggggggg:thread running...");
+//            if (debug) Log.d(TAG, "start running detection thread!");
             if (!processing.compareAndSet( false, true)) return;
 
-             Log.d(TAG, "BEGIN PROCESSING...");
+            if (debug) Log.d(TAG, "BEGIN PROCESSING...");
             try {
                 // Previous frame
                 int[] pre = null;
@@ -304,22 +306,22 @@ public class MotionDetectionActivity extends SensorsActivity {
                             else bitmap = ImageProcessing.lumaToGreyscale(img, width, height);
                         }
 
-                        Log.i(TAG, "Saving.. previous=" + previous + " original=" + original + " bitmap=" + bitmap);
+                        if (debug) Log.i(TAG, "Saving.. previous=" + previous + " original=" + original + " bitmap=" + bitmap);
                         Looper.prepare();
                         new SavePhotoTask().execute(previous, original, bitmap);
                         numImageTaken++;
                         if (numImageTaken == 2) {
-                            System.out.println("numImageTaken: " + numImageTaken);
                             numImageTaken = 0;
                             if (!isSendingMsg) {
                                 synchronized (syncSendMsg) {
                                     System.out.println("numImageTaken: sending!!!!!");
-                                    sendMessage(fileName);
+                                    sendFileName = fileName;
                                 }
+                                sendMessage(sendFileName);
                             }
                         }
                     } else {
-                        Log.i(TAG, "Not taking picture because not enough time has passed since the creation of the Surface");
+                        if (debug) Log.i(TAG, "Not taking picture because not enough time has passed since the creation of the Surface");
                     }
                 }
                 else {
@@ -359,6 +361,11 @@ public class MotionDetectionActivity extends SensorsActivity {
             for (int i = 0; i < data.length; i++) {
                 Bitmap bitmap = data[i];
                 String name = String.valueOf(System.currentTimeMillis());
+                if (i == 1) {
+                    synchronized (syncSendMsg) {
+                        fileName = path + "/" + name + ".jpg";
+                    }
+                }
                 if (bitmap != null) save(name, bitmap);
             }
             return 1;
@@ -366,9 +373,6 @@ public class MotionDetectionActivity extends SensorsActivity {
 
         private void save(String name, Bitmap bitmap) {
             File photo = new File(path, name + ".jpg");
-            synchronized (syncSendMsg) {
-                fileName = path + "/" + name + ".jpg";
-            }
             if (photo.exists()) photo.delete();
 
             try {
@@ -376,7 +380,7 @@ public class MotionDetectionActivity extends SensorsActivity {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
                 fos.close();
             } catch (java.io.IOException e) {
-                Log.e("PictureDemo", "Exception in photoCallback", e);
+                if (debug) Log.e(TAG, "Exception in photoCallback", e);
             }
         }
     }
@@ -448,7 +452,7 @@ public class MotionDetectionActivity extends SensorsActivity {
         }
         catch (Exception e) {
             displayMessage("Image attached failed!");
-            System.out.println("debug: Image attached failed!");
+            if (debug) Log.d(TAG, "Image attached failed!");
             return;
         }
         email.execute();
@@ -470,33 +474,34 @@ public class MotionDetectionActivity extends SensorsActivity {
             isSendingMsg = true;
             try {
                 activity.displayMessage("start sending message!");
-                System.out.println("dbggggggggg:start sending message!");
+                if (debug) Log.d(TAG, "start sending message");
                 if (m.send()) {
                     activity.displayMessage("Email sent.");
+                    if (debug) Log.d(TAG, "Email sent!");
                 } else {
                     activity.displayMessage("Email failed to send.");
+                    if (debug) Log.d(TAG, "Email failed to send.");
                 }
-                System.out.println("dbggggggggg:messages sent!");
                 isSendingMsg = false;
                 return true;
             } catch (AuthenticationFailedException e) {
                 Log.e(SendEmailAsyncTask.class.getName(), "Bad account details");
                 e.printStackTrace();
                 activity.displayMessage("Authentication failed.");
-                System.out.println("dbggggggggg:Authentication failed.");
+                if (debug) Log.d(TAG, "Authentication failed.");
                 isSendingMsg = false;
                 return false;
             } catch (MessagingException e) {
                 Log.e(SendEmailAsyncTask.class.getName(), "Email failed");
                 e.printStackTrace();
                 activity.displayMessage("Email failed to send.");
-                System.out.println("dbggggggggg:Email failed to send.");
+                if (debug) Log.d(TAG, "Email failed to send.");
                 isSendingMsg = false;
                 return false;
             } catch (Exception e) {
                 e.printStackTrace();
                 activity.displayMessage("Unexpected error occured.");
-                System.out.println("dbggggggggg:Unexpected error occured");
+                if (debug) Log.d(TAG, "Unexpected error occured");
                 isSendingMsg = false;
                 return false;
             }
